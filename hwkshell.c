@@ -19,7 +19,7 @@ int main(int argc, char * argv[], char * env[]){
 		if(strcmp(input, "exit") == 0)
 			break;
 		processInput(input, argv, env);
-}
+	}
 return 0;
 }
 
