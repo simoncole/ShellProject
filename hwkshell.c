@@ -6,11 +6,14 @@ With help from Dr. Bethelmy*/
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 
-void processInput(char input[], char * myargv[], char * myenv[], char * paths[]);
+void processInput(char input[], char * myargv[], char * myenv[], char * paths[], int myArgc);
 char * locatePath(char * env[]);
 void splitPath(char * path, char * paths[]);
+int findPosOfLess(char * argv[]);
+int findPosOfMore(char * argv[]);
 
 int main(int argc, char * argv[], char * env[]){
 	char * myargv[100];
@@ -18,6 +21,7 @@ int main(int argc, char * argv[], char * env[]){
 	int i = 0;
 	int j = 0;
 	char * paths[200];
+	int myArgc = 0;
 
 	char * path = locatePath(env);
 	splitPath(path, paths);
@@ -30,7 +34,7 @@ int main(int argc, char * argv[], char * env[]){
 			continue;
 		if(strcmp(input, "exit") == 0)
 			break;
-		processInput(input, myargv, env, paths);
+		processInput(input, myargv, env, paths, myArgc);
 	}
 	
 	//cat a slash on to the paths before attaching name of file trying to execute
@@ -39,7 +43,7 @@ int main(int argc, char * argv[], char * env[]){
 	return 0;
 }
 
-void processInput(char input[], char * myargv[], char * myenv[], char * paths[]){
+void processInput(char input[], char * myargv[], char * myenv[], char * paths[], int myArgc){
 	//get input like normal and print out the env recieved
 	int i = 0, status;
 	char * path;
@@ -50,12 +54,46 @@ void processInput(char input[], char * myargv[], char * myenv[], char * paths[])
 		myargv[i] = str;
 		//printf("%s\n", myargv[i]);
 		str = strtok(NULL, " ");
+		myArgc++;
 		i++;
 
 	}
-	
-	myargv[i] = NULL;
 
+	if (myArgc < 2)
+   {
+      printf("Usage: %s '<' input_file '>' output_file\n", myargv[0]);
+	  return;
+   }
+   int posOfLess = findPosOfLess(myargv);
+   if (posOfLess != -1)
+   {
+     close(0);  //close stdin from the keyboard
+     int fd = open(myargv[posOfLess+1], O_RDONLY);
+     if (fd == -1)
+     {
+        printf("Invalid file name: %s\n", myargv[posOfLess+1]);
+        return;
+     }
+   }
+   int posOfMore = findPosOfMore(myargv);
+   if (posOfMore != -1)
+   {
+      close(1);  //close stdout
+      int fd = open(myargv[posOfMore+1], O_WRONLY | O_CREAT | O_TRUNC, 0644);
+     if (fd == -1)
+     {
+        printf("Invalid file name: %s\n", myargv[posOfMore+1]);
+        return;
+     }
+    }
+	char strRedirect[1000];
+   while(fgets(strRedirect, 1000, stdin))
+   {
+      puts(strRedirect);
+   }
+
+	
+	// myargv[i] = NULL;
 	int pid = fork();
 	if(pid == 0)
 	{
@@ -109,4 +147,27 @@ void splitPath(char * path, char * paths[]){
 	paths[i] = NULL;
 	
 }
+int findPosOfLess(char * argv[])
+{
+  int pos = 0;
+  while(argv[pos])
+  {
+    if(strcmp(argv[pos], "<") == 0)
+      return pos;
+    pos++;
+  }
 
+  return -1;
+}
+int findPosOfMore(char * argv[])
+{
+  int pos = 0;
+  while(argv[pos])
+  {
+    if(strcmp(argv[pos], ">") == 0)
+      return pos;
+    pos++;
+  }
+
+  return -1;
+}
